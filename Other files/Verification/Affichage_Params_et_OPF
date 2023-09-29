@@ -1,0 +1,137 @@
+import pandapower.networks as nw
+import pandapower as pp
+import pandapower.plotting as pplt
+import numpy as np
+
+
+net = nw.case118()
+#net = nw.case6ww()
+#net = nw.mv_oberrhein()
+#net = nw.case_illinois200()
+#net = nw.case9cd()
+#net = nw.case24_ieee_rts
+
+# for i in range (len(net.ext_grid)):
+#     net.ext_grid.vm_pu[i] = 1
+#     net.ext_grid.va_degree[i] = 0
+
+pp.runopp(net)
+#pp.runopp(net, verbose=True)
+#pp.runopp(net, delta = 0.00000000000000000000000000000000000000001, OPF_VIOLATION = 10000000000000000000000000000000000000000000000000000000000000000)
+
+
+f=0                                            
+
+for i in range(len(net.poly_cost)):
+                    
+    if net.poly_cost.et[i] == 'gen':                                # Cost coefficients and computation of f due to generators (including slack bus)
+        
+        f += net.poly_cost.cp0_eur[i] + net.poly_cost.cp1_eur_per_mw[i] * net.res_gen.p_mw[net.poly_cost.element[i]] + net.poly_cost.cp2_eur_per_mw2[i] * net.res_gen.p_mw[net.poly_cost.element[i]]**2
+
+
+    if net.poly_cost.et[i] == 'ext_grid':                           # Cost coefficients and computation of f due to external grids
+
+        f += net.poly_cost.cp0_eur[i] + net.poly_cost.cp1_eur_per_mw[i] * net.res_ext_grid.p_mw[net.poly_cost.element[i]] + net.poly_cost.cp2_eur_per_mw2[i] * net.res_ext_grid.p_mw[net.poly_cost.element[i]]**2
+
+
+
+
+
+x_0=[]
+for i in range (len(net.gen)):
+    x_0 += [net.gen.p_mw[i]]
+for i in range (len(net.gen)):
+    x_0 += [net.gen.vm_pu[i]]
+
+output0 = (' '.join(str(elem) for elem in x_0))
+
+
+
+lower_bound=[]
+
+for i in range (len(net.gen)):
+    lower_bound += [net.gen.min_p_mw[i]]
+for i in range (len(net.gen)):
+    lower_bound += [net.bus.min_vm_pu[net.gen.bus[i]]]
+
+output1 = (' '.join(str(elem) for elem in lower_bound))
+
+
+
+upper_bound=[]
+
+for i in range (len(net.gen)):
+    upper_bound += [net.gen.max_p_mw[i]]
+for i in range (len(net.gen)):
+    upper_bound += [net.bus.max_vm_pu[net.gen.bus[i]]]
+
+output2 = (' '.join(str(elem) for elem in upper_bound))
+
+
+x_0_mid=[]
+
+for i in range (2*len(net.gen)):
+    x_0_mid += [lower_bound[i] + (upper_bound[i] - lower_bound[i])/2]
+
+outputx0 = (' '.join(str(elem) for elem in x_0_mid))
+
+
+
+granularity=[]
+
+for i in range (len(net.gen)):
+    granularity += [1]
+for i in range (len(net.gen)):
+    granularity += [0.1]
+
+output3 = (' '.join(str(elem) for elem in granularity))
+
+
+
+cstr=[]
+
+for i in range (519):
+    cstr += ['PB']
+
+output4 = (' '.join(str(elem) for elem in cstr))
+
+    
+
+print('\n\n\n\n\n\n', '______________________________________________PARAMS_DANS_NOMAD______________________________________________','\n\n')
+
+print('Dimension: ', 2*len(net.gen) ,'\n\n')
+
+print('Lower Bound: (', output1 ,')\n\n')
+
+print('Upper Bound: (', output2 ,')\n\n')
+
+print('x_0 par du network par defaut: (', output0 ,')\n\n')
+
+print('x_0 middle: (', outputx0 ,')\n\n')
+
+print('Granularity: (', output3 ,')\n\n')
+
+print('Granularity: (', output4 ,')\n\n')
+
+
+
+
+
+
+puissances=[]
+voltages=[]
+
+for i in range(len(net.gen)):
+    puissances+=[round(net.res_gen.p_mw[i], 1)]
+    voltages+=[round(net.res_gen.vm_pu[i], 2)]
+    
+output4 = (' '.join(str(elem) for elem in puissances))
+output5 = (' '.join(str(elem) for elem in voltages))
+
+print('\n\n\n\n\n\n', '______________________________________________OUTPUTS_OPF______________________________________________','\n\n')
+
+print('Resultats puissances : ', output4 ,'\n\n')
+
+print('Resultats voltages : ', output5 ,'\n\n')
+    
+print('Fonction objectif : ', f, '\n\n\n\n')
